@@ -1,37 +1,76 @@
+import os
 from google.cloud import speech
+from langdetect import detect
+import soundfile as sf
 
-def transcribe_audio(audio_file_path):
+def get_audio_properties(file_path):
     """
-    Transcribes the given audio file using Google Cloud Speech-to-Text.
+    Retrieve sample rate, channel count, and subtype of the audio file.
+    """
+    info = sf.info(file_path)
+    return info.samplerate, info.channels, info.subtype
+
+def choose_encoding(subtype):
+    """
+    Map the audio file subtype to a Google Cloud Speech encoding.
+    """
+    if subtype.upper() in ["PCM_16", "PCM_S16LE", "PCM_S16BE"]:
+        return speech.RecognitionConfig.AudioEncoding.LINEAR16
+    elif "FLAC" in subtype.upper():
+        return speech.RecognitionConfig.AudioEncoding.FLAC
+    else:
+        return speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED
+
+def create_dynamic_config(file_path, primary_language="en-US", alternative_languages=["es-ES"]):
+    """
+    Create a dynamic RecognitionConfig based on audio file properties.
+    """
+    sample_rate, channels, subtype = get_audio_properties(file_path)
+    encoding = choose_encoding(subtype)
     
-    Args:
-        audio_file_path (str): Path to the audio file.
+    config = speech.RecognitionConfig(
+        encoding=encoding,
+        sample_rate_hertz=sample_rate,
+        language_code=primary_language,
+        alternative_language_codes=alternative_languages,
+        audio_channel_count=channels,
+    )
+    return config
+
+def detect_language(transcript):
     """
-    # Instantiate a client
+    Use langdetect to identify the language of the transcript.
+    Returns the detected language code (e.g., 'en', 'es').
+    """
+    try:
+        return detect(transcript)
+    except Exception as e:
+        return "und"  # undetermined
+
+def transcribe_audio_file(audio_file_path):
+    # Initialize the Speech client
     client = speech.SpeechClient()
     
-    # Read the audio file into memory
+    # Read audio file content
     with open(audio_file_path, "rb") as audio_file:
         content = audio_file.read()
     
+    # Create dynamic configuration based on audio file properties
+    config = create_dynamic_config(audio_file_path)
     audio = speech.RecognitionAudio(content=content)
     
-    # Configure the request. Adjust sample_rate_hertz and encoding as needed.
-    config = speech.RecognitionConfig(
-        encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=16000,
-        language_code="en-US",  # or "es-ES" for Spanish
-    )
-    
-    # Use the recognize method for non-streaming (synchronous) transcription.
+    # Transcribe the audio
     response = client.recognize(config=config, audio=audio)
+    transcript = " ".join(result.alternatives[0].transcript for result in response.results)
     
-    # Process the results
-    for result in response.results:
-        # The alternative with the highest confidence is at index 0.
-        print("Transcript: {}".format(result.alternatives[0].transcript))
+    # Detect the language from the transcript
+    detected_language = detect_language(transcript) if transcript else "unknown"
+    
+    return {'Transcript': transcript, 'Language' : detected_language}
 
-if __name__ == "__main__":
-    # Replace 'path_to_audio.wav' with the actual path to your audio file.
-    audio_file_path = "/Users/jyotbuch/Downloads/test.wav"
-    transcribe_audio(audio_file_path)
+# if __name__ == "__main__":
+#     # Replace with your audio file path
+#     audio_path = "/Users/jyotbuch/Downloads/test2.wav"
+#     transcript = transcribe_audio_file(audio_path)
+    
+#     print(transcript)
