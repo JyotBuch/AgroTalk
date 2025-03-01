@@ -1,26 +1,19 @@
 import requests
 from datetime import datetime
-#from src.config import ACCUWEATHER_API_KEY
 
 class AccuWeatherAPI:
     """
     A class to fetch weather data from AccuWeather for agriculture purposes.
-    It returns current weather conditions and a 7-day forecast.
+    It returns current weather conditions and a 5-day forecast.
     """
-
+    
     def __init__(self, lat, lon, metric=True):
-        """
-        Initialize with latitude, longitude, and unit preference.
-        :param lat: Latitude of the location.
-        :param lon: Longitude of the location.
-        :param metric: Use metric units (True) or imperial (False).
-        """
-        self.api_key = "HjopCPpnztdMziBtiOOToA8PGGYZ50oC" # Replace with ACCUWEATHER_API_KEY from config.py
+        self.api_key = "HjopCPpnztdMziBtiOOToA8PGGYZ50oC"  # Replace with your AccuWeather API Key
         self.lat = lat
         self.lon = lon
         self.metric = metric
         self.location_key = self.get_location_key()
-
+        
         if not self.location_key:
             raise ValueError("Invalid location key. Check API response.")
     
