@@ -47,3 +47,6 @@ beautifulsoup4==4.11.1
 
 # Testing frameworks
 pytest==7.2.2
+
+# Google Cloud Speech-to-Text (for speech-to-text functionality)
+google-cloud-speech==2.22.0
