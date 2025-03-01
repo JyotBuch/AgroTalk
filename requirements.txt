@@ -1,0 +1,49 @@
+# Adding necessary packages to requirements.txt
+
+
+
+# Web framework and server
+fastapi==0.95.0
+uvicorn==0.21.1
+
+# HTTP clients for API requests
+requests==2.28.2
+aiohttp==3.8.4
+
+# Environment management
+python-dotenv==1.0.0
+
+# Image processing and multimodal utilities
+Pillow==9.5.0
+opencv-python==4.8.0.76
+
+# Data processing
+pandas==1.5.3
+numpy==1.23.5
+
+# LLM and NLP utilities (for custom LLM API, LangChain, etc.)
+openai==0.27.2
+langchain==0.0.238
+transformers==4.29.0
+tiktoken==0.3.0
+
+# Hugging Face libraries for language and voice tasks
+datasets==2.10.1
+huggingface_hub==0.13.3
+
+# Voice and audio processing
+torch==2.0.1
+torchaudio==2.0.2
+SpeechRecognition==3.8.1
+pydub==0.25.1
+librosa==0.10.0.post2
+soundfile==0.12.1
+
+# Vector databases and caching
+redis==4.5.5
+
+# HTML parsing (if you plan to scrape/process news content)
+beautifulsoup4==4.11.1
+
+# Testing frameworks
+pytest==7.2.2
