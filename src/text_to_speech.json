@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "agrotalk",
+  "private_key_id": "1452b2d3e0142195af234741b8e5f3886027648f",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDG9ZOt68p2kHnO\nFgZ6tWo+TtEzjBlNNxzh0b17X5oOyPOQKuIqJ0RsedB/LTaHbhwN3uBczP6mNqPF\nYdkKuhaG9ZDNWMwFxk6mfMlZ4NmXYy/jJ8JxJN3eBcy86ys/TtMBwkqfRhs+qwYx\nkjs2zOINWuzVZuFuHl4zX1QGsiEuT1gB14oChlLxsol1pyBNKKCta99JZQ6eIGkx\n5HkQmaWsocZxJeVKD3LK5MfOxK6p9Rgf46goYHYtKpxgR7q5bYkY3hORMCDXLtdt\nZJWtBf1U0RnenibKdObqQceoL22fgNnEHgIjOOHrbxLha/EvYo/jz8N3Mn525s3z\nET8jgdifAgMBAAECggEACTyMYxYfu5pgdT9ThK3YZVUeZDC8WffViOxGSix5h/cv\nS4GaJ0/UXt7W3ZiZP/dOKRywOM6xgcDmoHq260cRVamf09CsBBadPyBq7pfAMkWC\nCx8k6UDHZg/J3fli9BjyNdIxyawlBqdE7dc2lYg0dF9EwHF6xLR3NhZWXcs2PCKQ\nw2NXzdLyKW2F6IoOUajdSScEl1y2sUrXkTDY0/IsqcCls9hPuLnDQCRhJvRxqGzB\n8G7eGyp3YgQBm/9obDz13tvV7Nw+NiY/5+nZd5r98zge5eo0vneYsK2E2JeZ2kQ+\nYUUTA71uKTadE0yfS1PrkSw1OKoQq/N+6Adq+DcFiQKBgQD8LMzX46YxpZTA/Qa2\njwaIkpZ7tG/3IYtWYxXEs1JbrhmnNKx4aFhaty3CUV98qR8i95mzjq+PMon2WmKj\njtWe+XZzGz1r80t6pP94nXzsCv7hU/WSXt27c8/gY4bP5W172oGfiVjzmM209eH5\ngwG9/nq+NRUdRM5T9xaPMNlwFwKBgQDJ+iOgpbDiynsm1JiZjxUu3Rcf/AE+3UH+\n59jCAz8+jqPEJ2VPWFBRQlF67EkVJ2EuULwsjTCf7FU0juAiAiGaSasgVs03MSza\n8GH3378fqKR67RhZIM1iuG+r8HAJJPgXvM85g39t3nM7ro/ZeIdzGlFpUCRrVVY0\nxqX/yW3ouQKBgG1rrxK6WAHQ3EQFRqVuWCJooN1ahP7R0lkQs4BfYwwe9kikRXYV\nqMjsFPHtRyabZ8RPdaUA89KJ1m1L+OMJdk395tS5bCRsNEMqVyPqCiuN9dymBreV\nbFcLQJcX+IY7Ag+s13P3L967Xf74di5DFz1ur6na9Kd3lKPAYkyNoLvPAoGAFTf/\nKDBf/eNxvqmVAoTin9LATC7oXpdWCJaI0hEPQt4vXDsbTJOllHPYJYbPQrapYfk/\nW5rVoedtKCFecJQyvYfBv5r+4i57XODmGelapdPMu9FOvoZQrW9c4/5VdtB4c931\nE0C6UWuORZXYLOuZp0D7jonJ2bDUZqT76Xxa3JkCgYBq1odRRngKKv1Rjv0HotVZ\nU9GUtlJ9q/HDjO4ixvv+yZ0ezbNQ2i7c0vzz1K1KTzjJlV9vsU7vGJMENzz/Kqsl\nvsaThyuM86B/vtrItItfo6pDe1+xmDPolqlgB7dy4OB+yqeI1rMuWjGukVDzo/ie\nXgfaMKx8UT3W3kt5XnKiNA==\n-----END PRIVATE KEY-----\n",
+  "client_email": "agrotalk@agrotalk.iam.gserviceaccount.com",
+  "client_id": "117734043793986788197",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/agrotalk%40agrotalk.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
