@@ -1,28 +1,3 @@
-# import requests
-
-# url = "https://uiuc.chat/api/chat-api/chat"
-# headers = {
-#     'Content-Type': 'application/json',
-# }
-# data = {
-#     "model": "llama3.1:8b-instruct-fp16",
-#     "messages": [
-#         {
-#             "role": "system",
-#             "content": "What is tillage?"
-#         },
-#         {
-#             "role": "user",
-#             "content": "What is tillage?" # put user input here 
-#         }
-#     ],
-#     "openai_key": "DWXVJ9PhzqXbwdJMicfbOAjY4aHKb7Mvjiy0qukDrccEAviT9q67JQQJ99BAACYeBjFXJ3w3AAABACOG0CsL",
-#     "temperature": 0.1,
-#     "course_name": "AgroTalk",
-#     "stream": True,
-#     "api_key": "uc_72f58b54966b4f8f956cfbc535b802f7"
-# }
-
 import requests
 
 # API endpoint and headers
@@ -56,11 +31,26 @@ def chat_with_bot(user_input):
         # Send request
         response = requests.post(url, headers=headers, json=data)
 
-        # Ensure valid response
+        # Log the raw response text for debugging
+        print("Raw Response Text:", response.text)
+
+        # Check if response is valid
         if response.status_code == 200:
-            bot_reply = response.json().get("content", "No response received.")
-            conversation_history.append({"role": "assistant", "content": bot_reply})  # Keep chat history
-            return bot_reply
+            try:
+                json_response = response.json()  # Parse JSON
+                # Debugging: Print full API response to see structure
+                print("Full API Response:", json_response)
+
+                # Extract the message directly from the "message" key
+                bot_reply = json_response.get("message", "No response received.")
+
+                # Append the assistant's reply to conversation history
+                conversation_history.append({"role": "assistant", "content": bot_reply})
+                return bot_reply
+
+            except ValueError as e:
+                return f"Failed to parse JSON: {e}"
+
         else:
             return f"Error: {response.status_code}, {response.text}"
 
