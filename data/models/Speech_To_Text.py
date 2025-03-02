@@ -7,9 +7,18 @@ from langdetect import detect  # or skip if you don't need language detection
 
 def ensure_linear_pcm_wav(file_path):
     """
-    1. Detect the true codec using ffprobe.
-    2. If it's already linear PCM, return the same file.
-    3. Otherwise, convert to 16-bit PCM at 16 kHz, mono.
+    Ensure the audio file is in linear PCM WAV format.
+
+    Steps:
+    1. Use ffprobe to check the codec of the input file.
+    2. If already PCM, return the original file path.
+    3. Otherwise, convert the file to 16-bit PCM at 16 kHz, mono.
+
+    Args:
+        file_path (str): Path to the input audio file.
+
+    Returns:
+        str: Path to the converted or original PCM WAV file.
     """
     cmd = [
         "ffprobe", "-v", "quiet",
@@ -27,12 +36,10 @@ def ensure_linear_pcm_wav(file_path):
             break
     
     if is_pcm:
-        # We assume it's already correct if it's PCM.
-        # (Optionally, check for sample rate/channels and re-encode anyway.)
-        return file_path
+        return file_path  # Already in PCM format
     
-    # Convert to a new file
-    tmp_path = f"/tmp/{uuid.uuid4()}.wav"
+    # Convert to a secure temporary file
+    tmp_path = os.path.join("/tmp", f"{uuid.uuid4()}.wav")
     subprocess.run([
         "ffmpeg", "-i", file_path,
         "-ac", "1",            # mono
@@ -49,23 +56,30 @@ def transcribe_audio_file(
     alternative_languages=["es-ES"]
 ):
     """
-    Transcribe audio by ensuring it's properly formatted PCM,
-    then calling the Google Speech-to-Text API.
+    Transcribe an audio file using Google Cloud Speech-to-Text API.
+    
+    The function ensures the audio file is properly formatted (PCM WAV) 
+    before sending it to the API.
 
-    'primary_language' is the main language_code.
-    'alternative_languages' is a list of additional languages, e.g. ["es-ES"].
+    Args:
+        audio_file_path (str): Path to the input audio file.
+        primary_language (str): Primary language for transcription.
+        alternative_languages (list): List of alternative language codes.
+
+    Returns:
+        dict: A dictionary containing the transcript and detected language.
     """
-    # Convert if needed
+    # Convert to PCM WAV if necessary
     normalized_path = ensure_linear_pcm_wav(audio_file_path)
     
-    # Initialize client
+    # Initialize Google Speech-to-Text client
     client = speech.SpeechClient()
     
-    # Read the (converted) audio file
+    # Read audio content
     with open(normalized_path, "rb") as f:
         content = f.read()
     
-    # Configuration: primary + alternative language(s)
+    # Configure speech recognition settings
     config = speech.RecognitionConfig(
         encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
         sample_rate_hertz=16000,
@@ -74,30 +88,28 @@ def transcribe_audio_file(
     )
     audio = speech.RecognitionAudio(content=content)
     
-    # Transcribe
+    # Transcribe the audio
     response = client.recognize(config=config, audio=audio)
-    # Debug: print the raw response
-    print(response)
     
-    # If no results, return empty transcript
+    # If no results, return an empty transcript
     if not response.results:
         return {'Transcript': '', 'Language': 'unknown'}
     
-    # Collect the transcripts
+    # Extract the transcript from the response
     transcript = " ".join(
         result.alternatives[0].transcript for result in response.results
     )
     
-    # Optionally, try to detect the language from the transcript
+    # Detect language from transcript (fallback to 'unknown' if detection fails)
     try:
         detected_language = detect(transcript) if transcript else "unknown"
     except:
         detected_language = "und"
     
-    return transcript
+    return {'Transcript': transcript, 'Language': detected_language}
 
+# Uncomment for standalone execution
 # if __name__ == "__main__":
-#     # Example usage
 #     audio_path = "./uploads/user_audio.wav"
 #     result = transcribe_audio_file(
 #         audio_file_path=audio_path,
