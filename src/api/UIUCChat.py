@@ -29,7 +29,7 @@ def chat_with_bot(user_input):
 
     try:
         # Send request
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=30)
 
         # Log the raw response text for debugging
         print("Raw Response Text:", response.text)
@@ -57,13 +57,13 @@ def chat_with_bot(user_input):
     except requests.RequestException as e:
         return f"Request failed: {str(e)}"
 
-# Conversation loop
-print("Chatbot: Hello! Ask me anything about agriculture. Type 'exit' to end the chat.")
-while True:
-    user_input = input("You: ")
-    if user_input.lower() in ["exit", "quit", "bye"]:
-        print("Chatbot: Goodbye!")
-        break
+# # Conversation loop
+# print("Chatbot: Hello! Ask me anything about agriculture. Type 'exit' to end the chat.")
+# while True:
+#     user_input = input("You: ")
+#     if user_input.lower() in ["exit", "quit", "bye"]:
+#         print("Chatbot: Goodbye!")
+#         break
 
-    bot_response = chat_with_bot(user_input)
-    print(f"Chatbot: {bot_response}")
+#     bot_response = chat_with_bot(user_input)
+#     print(f"Chatbot: {bot_response}")

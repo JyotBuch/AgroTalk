@@ -48,3 +48,7 @@ pytest==7.2.2
 
 # Google Cloud Speech-to-Text (for speech-to-text functionality)
 google-cloud-speech==2.22.0
+
+# adding streamlit for web app
+streamlit==1.5.0
+streamlit-mic-recorder==0.0.1
