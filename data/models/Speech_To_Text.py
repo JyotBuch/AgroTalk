@@ -68,9 +68,9 @@ def transcribe_audio_file(audio_file_path):
     
     return {'Transcript': transcript, 'Language' : detected_language}
 
-# if __name__ == "__main__":
-#     # Replace with your audio file path
-#     audio_path = "/Users/jyotbuch/Downloads/test2.wav"
-#     transcript = transcribe_audio_file(audio_path)
+if __name__ == "__main__":
+    # Replace with your audio file path
+    audio_path = "/Users/jyotbuch/Downloads/test3.wav"
+    transcript = transcribe_audio_file(audio_path)
     
-#     print(transcript)
+    print(transcript)

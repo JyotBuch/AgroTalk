@@ -1,6 +1,10 @@
 import requests
 from datetime import datetime
-#from src.config import ACCUWEATHER_API_KEY
+
+import sys
+sys.path.append("/Users/jyotbuch/AgroTalk/src")
+
+from utils.config import ACCUWEATHER_API_KEY
 
 class AccuWeatherAPI:
     """
@@ -15,7 +19,7 @@ class AccuWeatherAPI:
         :param lon: Longitude of the location.
         :param metric: Use metric units (True) or imperial (False).
         """
-        self.api_key = "HjopCPpnztdMziBtiOOToA8PGGYZ50oC" # Replace with ACCUWEATHER_API_KEY from config.py
+        self.api_key = ACCUWEATHER_API_KEY
         self.lat = lat
         self.lon = lon
         self.metric = metric
@@ -92,17 +96,17 @@ class AccuWeatherAPI:
             "forecast": forecast
         }
 
-# Example usage
-if __name__ == "__main__":
-    lat, lon = 40.51, -88.40  # Example coordinates
-    weather_api = AccuWeatherAPI(lat=lat, lon=lon, metric=True)
+# # Example usage
+# if __name__ == "__main__":
+#     lat, lon = 40.51, -88.40  # Example coordinates
+#     weather_api = AccuWeatherAPI(lat=lat, lon=lon, metric=True)
     
-    weather_summary = weather_api.get_weather_summary()
+#     weather_summary = weather_api.get_weather_summary()
     
-    print("Current Weather:")
-    for key, value in weather_summary["current_weather"].items():
-        print(f"  {key}: {value}")
+#     print("Current Weather:")
+#     for key, value in weather_summary["current_weather"].items():
+#         print(f"  {key}: {value}")
     
-    print("\n5-Day Forecast:")
-    for day in weather_summary["forecast"]:
-        print(day)
+#     print("\n5-Day Forecast:")
+#     for day in weather_summary["forecast"]:
+#         print(day)
