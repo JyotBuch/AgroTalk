@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AgroTalk Chatbot - Mobile App UI</title>
+  <!-- Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+  
+  <!-- Font Awesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- Marked.js for Markdown parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <style>
+    /* Global Styles */
+    * {
+      box-sizing: border-box;
+      font-family: 'Roboto', sans-serif;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #e0e0e0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      position: relative;
+    }
+    /* iPhone Frame Simulation */
+    .iphone-frame {
+      width: 390px;
+      height: 844px;
+      background-color: #000;
+      border-radius: 50px;
+      padding: 20px;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* Notch */
+    .notch {
+      width: 210px;
+      height: 30px;
+      background-color: #000;
+      border-bottom-left-radius: 20px;
+      border-bottom-right-radius: 20px;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+    /* Home Indicator */
+    .home-indicator {
+      width: 134px;
+      height: 5px;
+      background-color: rgba(255,255,255,0.5);
+      border-radius: 10px;
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+    /* Chat Container inside iPhone Frame */
+    .chat-container {
+      flex: 1;
+      background-color: #fff;
+      border-radius: 30px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      margin-top: 40px; /* space for notch */
+      margin-bottom: 30px; /* space for home indicator */
+    }
+    /* Header: now using column layout */
+    .chat-header {
+      background-color: #014A2F;
+      color: white;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .chat-header h2 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 500;
+      text-align: center;
+    }
+    /* Farm Selection Dropdown below title */
+    .farm-select {
+      margin-top: 8px;
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: none;
+      font-size: 0.8rem;
+      background-color: #028c50;
+      color: #fff;
+      cursor: pointer;
+    }
+    .farm-select:hover {
+      background-color: #02a05a;
+    }
+    /* Chat History */
+    .chat-history {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      background-color: #f7f7f7;
+    }
+    .message {
+      display: block;
+      margin: 6px 0;
+      padding: 8px 10px;
+      border-radius: 15px;
+      max-width: 80%;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    .message.user {
+      background-color: #DCF8C6;
+      color: #333;
+      margin-left: auto;
+      text-align: right;
+    }
+    .message.bot {
+      background-color: #e2e2e2;
+      color: #333;
+      margin-right: auto;
+      text-align: left;
+    }
+    .loading {
+      font-style: italic;
+      color: #555;
+    }
+    /* Chat Input Area */
+    .chat-input-area {
+      background-color: #f0f0f0;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chat-input-area input[type="text"] {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+    }
+    .chat-input-area button {
+      background-color: #014A2F;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chat-input-area button:active {
+      transform: scale(0.95);
+    }
+    .icon-button {
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .icon-button img, .icon-button i {
+      width: 20px;
+      height: 20px;
+    }
+    .icon-button.active {
+      transform: translateY(-3px);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    }
+    .file-input {
+      display: none;
+    }
+    /* Voice Permissions Modal */
+    #permission-modal {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #permission-modal .modal-content {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      max-width: 280px;
+      width: 80%;
+    }
+    #permission-modal button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #014A2F;
+      color: #fff;
+      cursor: pointer;
+      margin-top: 15px;
+      font-size: 0.9rem;
+    }
+    /* Home Indicator */
+    .home-indicator {
+      width: 134px;
+      height: 5px;
+      background-color: rgba(255,255,255,0.5);
+      border-radius: 10px;
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+  <div class="iphone-frame">
+    <!-- Notch -->
+    <div class="notch"></div>
+    
+    <!-- Chat Container -->
+    <div class="chat-container">
+      <!-- Voice Permissions Modal -->
+      <div id="permission-modal">
+        <div class="modal-content">
+          <h3 id="modal-title">Voice Permission</h3>
+          <p id="modal-text">Please allow access to your microphone for voice messages.</p>
+          <button id="allow-voice-btn">Allow Voice Permissions</button>
+        </div>
+      </div>
+      <!-- Header with Centered Title and Farm Selection Below -->
+      <div class="chat-header">
+        <h2 id="header-title">AgroTalk Chatbot</h2>
+        <select id="farm-select" class="farm-select">
+          <option value="General Information">General Information</option>
+          <option value="Illinois Farm">Illinois Farm</option>
+          <option value="North Dakota Farm">North Dakota Farm</option>
+        </select>
+      </div>
+      <!-- Chat History -->
+      <div class="chat-history" id="chat-history">
+        <!-- Messages will appear here -->
+      </div>
+      <!-- Chat Input Area -->
+      <div class="chat-input-area">
+        <!-- Image Upload Functionality Commented Out -->
+        <!--
+        <button id="image-button" class="icon-button" title="Send Image">
+          <img src="https://img.icons8.com/ios-filled/24/000000/picture.png" alt="Image">
+        </button>
+        <input type="file" id="image-input" class="file-input" accept="image/*">
+        -->
+        <!-- Text Input Field -->
+        <input type="text" id="chat-input" placeholder="Type your message...">
+        <!-- Send Text Button (Arrow Icon) -->
+        <button id="send-button" class="icon-button" title="Send Text">
+          <i class="fas fa-arrow-right"></i>
+        </button>
+        <!-- Audio Push-to-Talk Button -->
+        <button id="audio-button" class="icon-button" title="Push to Talk">
+          <img src="https://img.icons8.com/ios-filled/24/ffffff/microphone.png" alt="Audio">
+        </button>
+      </div>
+    </div>
+    
+    <!-- Home Indicator -->
+    <div class="home-indicator"></div>
+  </div>
+  
+  <!-- Include jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script>
+    // Global variable for audio stream
+    let globalStream = null;
+    
+    // Microphone permission request
+    $("#allow-voice-btn").on("click", function() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          globalStream = stream;
+          $("#permission-modal").fadeOut();
+        })
+        .catch(err => {
+          console.error("Microphone permission error:", err);
+          $("#permission-modal").fadeOut();
+        });
+    });
+    
+    // Append message using Markdown conversion
+    function appendMessage(sender, messageText) {
+      let formattedText = marked.parse(messageText);
+      let msgClass = sender === "user" ? "message user" : "message bot";
+      let messageHtml = `<div class="${msgClass}">${formattedText}</div>`;
+      $("#chat-history").append(messageHtml);
+      $("#chat-history").scrollTop($("#chat-history")[0].scrollHeight);
+    }
+    
+    // Append loading message
+    function appendLoading() {
+      let loadingElement = $('<div class="message bot loading">Bot is typing…</div>');
+      $("#chat-history").append(loadingElement);
+      $("#chat-history").scrollTop($("#chat-history")[0].scrollHeight);
+      return loadingElement;
+    }
+    
+    function getSelectedFarm() {
+      return $("#farm-select").val();
+    }
+    
+    // Handle sending text messages
+    $("#send-button").on("click", function() {
+      let message = $("#chat-input").val();
+      if (message.trim() === "") return;
+      appendMessage("user", message);
+      $("#chat-input").val("");
+      let loadingMsg = appendLoading();
+      $.post("/chat", { 
+        user_input: message, 
+        farm_type: getSelectedFarm(),
+        language: "en" // Default language
+      }, function(data) {
+        loadingMsg.remove();
+        let botResponse = data.response ? data.response : "No response";
+        appendMessage("bot", botResponse);
+      });
+    });
+    
+    $("#chat-input").on("keypress", function(e) {
+      if (e.which === 13) {
+        $("#send-button").click();
+      }
+    });
+    
+    /* Image functionality commented out
+    $("#image-button").on("click", function() {
+      $("#image-input").click();
+    });
+    $("#image-input").on("change", function() {
+      let file = this.files[0];
+      if (!file) return;
+      let imageUrl = URL.createObjectURL(file);
+      let previewHtml = `<img src="${imageUrl}" class="image-preview" alt="User Image Preview">`;
+      appendMessage("user", previewHtml);
+      let formData = new FormData();
+      formData.append("image", file);
+      let loadingMsg = appendLoading();
+      $.ajax({
+        url: "/upload_image",
+        type: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(data) {
+          loadingMsg.remove();
+          appendMessage("bot", "Image description: " + data.description);
+        },
+        error: function(err) {
+          loadingMsg.remove();
+          appendMessage("bot", "Error processing image: " + JSON.stringify(err));
+        }
+      });
+    });
+    */
+    
+    // Audio recording variables
+    let mediaRecorder;
+    let audioChunks = [];
+    
+    $("#audio-button").on("mousedown", function() {
+      $(this).addClass("active");
+      let promise = globalStream ? Promise.resolve(globalStream) : navigator.mediaDevices.getUserMedia({ audio: true });
+      promise.then(stream => {
+          if (!globalStream) {
+            globalStream = stream;
+          }
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.start();
+          audioChunks = [];
+          mediaRecorder.addEventListener("dataavailable", event => {
+            audioChunks.push(event.data);
+          });
+        })
+        .catch(err => {
+          console.error("Audio recording error:", err);
+        });
+    });
+    
+    $("#audio-button").on("mouseup mouseleave", function() {
+      $(this).removeClass("active");
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+        mediaRecorder.addEventListener("stop", () => {
+          let audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+          let formData = new FormData();
+          formData.append("audio", audioBlob, "audio.wav");
+          formData.append("language", "en");
+          formData.append("farm_type", getSelectedFarm());
+          let loadingMsg = appendLoading();
+          $.ajax({
+            url: "/upload_audio",
+            type: "POST",
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(data) {
+              loadingMsg.remove();
+              let transcribedText = data.transcribed_text;
+              if (typeof transcribedText === "object") {
+                transcribedText = JSON.stringify(transcribedText);
+              }
+              appendMessage("user", transcribedText);
+              appendMessage("bot", data.response);
+            },
+            error: function(err) {
+              loadingMsg.remove();
+              appendMessage("bot", "Error processing audio: " + JSON.stringify(err));
+            }
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

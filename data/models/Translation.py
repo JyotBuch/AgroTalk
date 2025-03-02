@@ -32,3 +32,15 @@ def transcribe_and_translate(audio_file_path):
 #     result = transcribe_and_translate(audio_path)
 #     print("Processed Text:")
 #     print(result)
+
+from transformers import MarianMTModel, MarianTokenizer
+
+def translate_english_to_spanish(text):
+    model_name = 'Helsinki-NLP/opus-mt-en-es'
+    tokenizer = MarianTokenizer.from_pretrained(model_name)
+    model = MarianMTModel.from_pretrained(model_name)
+
+    inputs = tokenizer(text, return_tensors='pt', padding=True)
+    translated = model.generate(**inputs)
+    translated_text = tokenizer.batch_decode(translated, skip_special_tokens=True)
+    return translated_text[0]

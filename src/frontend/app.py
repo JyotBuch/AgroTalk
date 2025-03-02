@@ -1,198 +1,432 @@
-import streamlit as st
-from PIL import Image
-from streamlit_mic_recorder import mic_recorder
-import sys
 import os
-import tempfile
+import sys
+import json
+import uuid
+import subprocess
+from flask import Flask, render_template, request, jsonify, session
 
-# Add the path to the folder containing UIUCChat.py to the sys.path
+# Add your project paths so modules are accessible
 sys.path.append("/Users/jyotbuch/AgroTalk/src")
 sys.path.append("/Users/jyotbuch/AgroTalk")
 
-from api.UIUCChat import chat_with_bot  # Importing the chatbot function
-from data.models import Speech_To_Text # Importing the Speech-to-Text module
+from api.UIUCChat import chat_with_bot
+from data.models import Speech_To_Text
+from llm.openai_driver import describe_image
 
-
-
-# Page configuration
-st.set_page_config(page_title='AgroTalk Chatbot', layout='wide')
-
-UPLOAD_FOLDER = "uploads"
+UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Language selection
-language = st.sidebar.selectbox("Select Language / Seleccionar Idioma", ["English", "Español"])
+app = Flask(__name__, template_folder='/Users/jyotbuch/AgroTalk/templates')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.secret_key = 'your_secret_key_here'  # required for session usage
 
-# Farm selection dropdown in sidebar with default option for general information
-farm_type = st.sidebar.selectbox("Select Farm Location", ["General Information", "Illinois Farm", "North Dakota Farm"])
+# --- Helper functions to manage conversation context ---
 
-# Translations
-translations = {
-    "English": {
-        "title": "🌾 AgroTalk - Smart Farming Assistant",
-        "chat_placeholder": "Chat messages will appear here",
-        "input_placeholder": "Type a message...",
-        "upload_image": "Upload an image:",
-        "record_audio": "Record audio:",
-        "image_uploaded": "Image uploaded.",
-        "audio_recorded": "Audio recorded.",
-        "processing_text": "Processing your text... (LLM response)",
-        "processing_image": "Processing your image... (Vision model response)",
-        "processing_audio": "Processing your audio... (Speech-to-text + LLM response)",
-        "farm_selected": f"Selected farm location: {farm_type}"
-    },
-    "Español": {
-        "title": "🌾 AgroTalk - Asistente Inteligente de Agricultura",
-        "chat_placeholder": "Los mensajes del chat aparecerán aquí",
-        "input_placeholder": "Escribe un mensaje...",
-        "upload_image": "Subir una imagen:",    
-        "record_audio": "Grabar audio:",
-        "image_uploaded": "Imagen subida.",
-        "audio_recorded": "Audio grabado.",
-        "processing_text": "Procesando tu texto... (Respuesta del modelo de lenguaje)",
-        "processing_image": "Procesando tu imagen... (Respuesta del modelo de visión)",
-        "processing_audio": "Procesando tu audio... (Conversión de voz a texto + Respuesta del modelo de lenguaje)",
-        "farm_selected": f"Ubicación de la granja seleccionada: {farm_type}"
-    }
-}
+def count_tokens(text):
+    """A rough approximation of token count."""
+    return len(text.split())
 
-# Get translations for the selected language
-t = translations[language]
+def trim_messages(messages, max_tokens=120000):
+    """Remove oldest messages until total token count is under max_tokens."""
+    total_tokens = sum(count_tokens(msg.get('content', '')) for msg in messages)
+    while total_tokens > max_tokens and messages:
+        messages.pop(0)
+        total_tokens = sum(count_tokens(msg.get('content', '')) for msg in messages)
+    return messages
 
-# Title
-st.title(t["title"])
+# --- (Translation functionalities commented out for now) ---
+# from transformers import MarianMTModel, MarianTokenizer
+# def translate_english_to_spanish(text):
+#     model_name = 'Helsinki-NLP/opus-mt-en-es'
+#     tokenizer = MarianTokenizer.from_pretrained(model_name)
+#     model = MarianMTModel.from_pretrained(model_name)
+#     inputs = tokenizer(text, return_tensors='pt', padding=True)
+#     translated = model.generate(**inputs)
+#     translated_text = tokenizer.batch_decode(translated, skip_special_tokens=True)
+#     return translated_text[0]
 
-# Custom CSS styling
-st.markdown(
-    """
-    <style>
-        .chat-message {
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-            display: flex
-        }
-        .chat-message.user {
-            background-color: #2b313e
-        }
-        .chat-message.bot {
-            background-color: #475063
-        }
-        .chat-message .avatar {
-          width: 20%;
-        }
-        .chat-message .avatar img {
-          max-width: 78px;
-          max-height: 78px;
-          border-radius: 50%;
-          object-fit: cover;
-        }
-        .chat-message .message {
-          width: 80%;
-          padding: 0 1.5rem;
-          color: #fff;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+# --- Flask endpoints ---
 
-# Display selected farm type in the sidebar
-st.sidebar.write(t["farm_selected"])
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-# Initialize session state for chat history
-if 'messages' not in st.session_state:
-    st.session_state.messages = []
-if 'audio_files' not in st.session_state:
-    st.session_state.audio_files = []
-if 'last_audio' not in st.session_state:
-    st.session_state.last_audio = None
-if 'last_image' not in st.session_state:
-    st.session_state.last_image = None
+@app.route('/chat', methods=['POST'])
+def chat():
+    user_input = request.form.get('user_input')
+    farm_type = request.form.get('farm_type', 'General Information')
+    # language = request.form.get('language', 'en')  # language param (unused for now)
 
-# Display chat messages
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        if "audio" in message:
-            st.markdown("🎤")  # Show mic emoji instead of audio player
-        elif "image" in message:
-            st.image(message["image"], caption=t["image_uploaded"], width=300)
-        else:
-            st.markdown(message["content"])
+    if farm_type != "General Information":
+        farm_info = f"Information requested is for {farm_type}."
+    else:
+        farm_info = "Information requested is for general information."
+    
+    # Initialize conversation history if not present.
+    if 'messages' not in session:
+        session['messages'] = []
+    
+    session['messages'].append({'role': 'user', 'content': user_input})
+    session['messages'] = trim_messages(session['messages'])
+    
+    query = f"{farm_info}\n{user_input}"
+    response = chat_with_bot(query)
+    
+    session['messages'].append({'role': 'assistant', 'content': response})
+    
+    # Translation functionality commented out:
+    # if language == "es":
+    #     response = translate_english_to_spanish(response)
+    
+    return jsonify({'response': response})
 
-# User input
-user_input = st.chat_input(t["input_placeholder"])
+@app.route('/upload_image', methods=['POST'])
+def upload_image():
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
 
-# File upload and audio recording container
-col1, col2 = st.columns(2)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    file.save(file_path)
+    
+    description = describe_image(file_path)
+    return jsonify({'description': description})
 
-# Image upload input
-with col1:
-    st.write(t["upload_image"])
-    user_image = st.file_uploader("", type=["jpg", "jpeg", "png"], label_visibility="collapsed")
+@app.route('/upload_audio', methods=['POST'])
+def upload_audio():
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
+    file = request.files['audio']
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'user_audio.wav')
+    file.save(file_path)
+    
+    transcribed_text = Speech_To_Text.transcribe_audio_file(file_path)
+    
+    farm_type = request.form.get('farm_type', 'General Information')
+    # language = request.form.get('language', 'en')  # language param (unused for now)
+    
+    if farm_type != "General Information":
+        farm_info = f"Information requested is for {farm_type}."
+    else:
+        farm_info = "Information requested is for general information."
+    
+    if 'messages' not in session:
+        session['messages'] = []
+    
+    session['messages'].append({'role': 'user', 'content': transcribed_text})
+    session['messages'] = trim_messages(session['messages'])
+    
+    query = f"{farm_info}\n{transcribed_text}"
+    response = chat_with_bot(query)
+    session['messages'].append({'role': 'assistant', 'content': response})
+    
+    # Translation functionality commented out:
+    # if language == "es":
+    #     response = translate_english_to_spanish(response)
+    
+    return jsonify({'transcribed_text': transcribed_text, 'response': response})
 
-# Audio recording input
-with col2:
-    st.write(t["record_audio"])
-    audio = mic_recorder(start_prompt="🎤", key="mic")
+if __name__ == '__main__':
+    app.run(debug=True)
 
-# Handle user inputs
-if user_input:
-    # Add user message to the chat history
-    st.session_state.messages.append({"role": "user", "content": user_input})
-    with st.chat_message("user"):
-        st.markdown(user_input)
 
-    # Determine farm-specific message
-    farm_info = f"Information requested is for {farm_type}." if farm_type != "General Information" else "Information requested is for general information."
-    print(farm_info)
-    # Call the chatbot function to get the actual response
-    response = chat_with_bot(f"{farm_info}\n".join(user_input))  # Get response from the chatbot backend
+# from flask import Flask, render_template, request, jsonify
+# from PIL import Image
+# import os
+# import sys
+# import io
 
-    # Prepend farm info to the response
-    response_with_farm_info = f"{response}"
+# # Add the path to your project folders so you can import your modules
+# sys.path.append("/Users/jyotbuch/AgroTalk/src")
+# sys.path.append("/Users/jyotbuch/AgroTalk")
 
-    # Append the assistant's response with farm info to session state
-    st.session_state.messages.append({"role": "assistant", "content": response_with_farm_info})
-    with st.chat_message("assistant"):
-        st.markdown(response_with_farm_info)
+# # Import your existing functions
+# from api.UIUCChat import chat_with_bot
+# from data.models import Speech_To_Text
+# from llm.openai_driver import describe_image
 
-    st.rerun()
+# UPLOAD_FOLDER = 'uploads'
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-if user_image and user_image != st.session_state.last_image:
-    st.session_state.last_image = user_image
-    img = Image.open(user_image)
-    file_path = os.path.join(UPLOAD_FOLDER, user_image.name)
-    img.save(file_path)
+# app = Flask(__name__, template_folder='/Users/jyotbuch/AgroTalk/templates')
+# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-    st.session_state.messages.append({"role": "user", "image": file_path})
-    with st.chat_message("user"):
-        st.image(file_path, caption=t["image_uploaded"], width=300)
+# # Home page: Render the chat interface
+# @app.route('/')
+# def index():
+#     return render_template('index.html')
 
-    response = t["processing_image"]
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    with st.chat_message("assistant"):
-        st.markdown(response)
+# # Endpoint to handle text chat
+# @app.route('/chat', methods=['POST'])
+# def chat():
+#     user_input = request.form.get('user_input')
+#     farm_type = request.form.get('farm_type', 'General Information')
+#     # Create a message that includes farm-specific info
+#     if farm_type != "General Information":
+#         farm_info = f"Information requested is for {farm_type}."
+#     else:
+#         farm_info = "Information requested is for general information."
+    
+#     # Combine your input with the farm info
+#     query = f"{farm_info}\n{user_input}"
+#     response = chat_with_bot(query)
+#     return jsonify({'response': response})
 
-    st.rerun()
+# # Endpoint to handle image uploads
+# @app.route('/upload_image', methods=['POST'])
+# def upload_image():
+#     if 'image' not in request.files:
+#         return jsonify({'error': 'No image file provided'}), 400
+#     file = request.files['image']
+#     if file.filename == '':
+#         return jsonify({'error': 'No file selected'}), 400
+    
+#     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+#     file.save(file_path)
+    
+#     # Optionally, you could compress the image here if needed:
+#     img = Image.open(file)
+#     img = img.convert("RGB")
+#     img.thumbnail((1024, 1024))
+#     img.save(file_path, "JPEG", quality=75)
+    
+#     # Process the image using your function
+#     description = describe_image(file_path)
+#     return jsonify({'description': description})
 
-if audio and audio != st.session_state.last_audio:
-    st.session_state.last_audio = audio  # Update last audio to prevent infinite loop
-    audio_bytes = audio['bytes'] if isinstance(audio, dict) and 'bytes' in audio else audio
+# # Endpoint to handle audio uploads
+# @app.route('/upload_audio', methods=['POST'])
+# def upload_audio():
+#     if 'audio' not in request.files:
+#         return jsonify({'error': 'No audio file provided'}), 400
+#     file = request.files['audio']
+#     file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'user_audio.wav')
+#     file.save(file_path)
+    
+#     # Transcribe the audio file using your module
+#     transcribed_text = Speech_To_Text.transcribe_audio_file(file_path)
+    
+#     # Include farm-specific information for the audio request as well
+#     farm_type = request.form.get('farm_type', 'General Information')
+#     if farm_type != "General Information":
+#         farm_info = f"Information requested is for {farm_type}."
+#     else:
+#         farm_info = "Information requested is for general information."
+    
+#     query = f"{farm_info}\n{transcribed_text}"
+#     response = chat_with_bot(query)
+    
+#     return jsonify({'transcribed_text': transcribed_text, 'response': response})
 
-    if isinstance(audio_bytes, bytes):
-        file_path = os.path.join(UPLOAD_FOLDER, f"user_audio.wav")
-        with open(file_path, "wb") as f:
-            f.write(audio_bytes)
+# if __name__ == '__main__':
+#     app.run(debug=True)
 
-        st.session_state.audio_files.append(file_path)
-        st.session_state.messages.append({"role": "user", "content": t["audio_recorded"], "audio": file_path})
-        with st.chat_message("user"):
-            st.markdown("🎤")  # Show mic emoji instead of audio player
 
-        response = t["processing_audio"]
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        with st.chat_message("assistant"):
-            st.markdown(response)
+# from flask import Flask, render_template, request, jsonify, session
+# from PIL import Image
+# import os
+# import sys
 
-        st.rerun()
+# # Add the path to your project folders so you can import your modules
+# sys.path.append("/Users/jyotbuch/AgroTalk/src")
+# sys.path.append("/Users/jyotbuch/AgroTalk")
+
+# # Import your existing functions
+# from api.UIUCChat import chat_with_bot
+# from data.models import Speech_To_Text
+# from llm.openai_driver import describe_image
+
+# UPLOAD_FOLDER = 'uploads'
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# app = Flask(__name__, template_folder='/Users/jyotbuch/AgroTalk/templates')
+# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# app.secret_key = 'your_secret_key_here'  # required for session usage
+
+# # --- Helper functions to manage conversation context ---
+
+# def count_tokens(text):
+#     """
+#     A rough approximation of token count.
+#     In production, consider using a tokenizer specific to your model.
+#     """
+#     return len(text.split())
+
+# def trim_messages(messages, max_tokens=120000):
+#     """
+#     Given a list of message dicts with a 'content' key,
+#     remove oldest messages until total token count is under max_tokens.
+#     """
+#     total_tokens = sum(count_tokens(msg.get('content', '')) for msg in messages)
+#     while total_tokens > max_tokens and messages:
+#         messages.pop(0)
+#         total_tokens = sum(count_tokens(msg.get('content', '')) for msg in messages)
+#     return messages
+
+# # --- Flask endpoints ---
+
+# @app.route('/')
+# def index():
+#     return render_template('index.html')
+
+# @app.route('/chat', methods=['POST'])
+# def chat():
+#     user_input = request.form.get('user_input')
+#     farm_type = request.form.get('farm_type', 'General Information')
+#     if farm_type != "General Information":
+#         farm_info = f"Information requested is for {farm_type}."
+#     else:
+#         farm_info = "Information requested is for general information."
+    
+#     # Initialize conversation history if not present.
+#     if 'messages' not in session:
+#         session['messages'] = []
+    
+#     # Append the new user message
+#     session['messages'].append({'role': 'user', 'content': user_input})
+#     # Trim the conversation context if needed
+#     session['messages'] = trim_messages(session['messages'])
+    
+#     # For this example, we send only the new message plus farm info.
+#     # You may choose to send the entire conversation history if desired.
+#     query = f"{farm_info}\n{user_input}"
+#     response = chat_with_bot(query)
+    
+#     # Append the bot's response to the conversation history.
+#     session['messages'].append({'role': 'assistant', 'content': response})
+    
+#     return jsonify({'response': response})
+
+# @app.route('/upload_image', methods=['POST'])
+# def upload_image():
+#     if 'image' not in request.files:
+#         return jsonify({'error': 'No image file provided'}), 400
+#     file = request.files['image']
+#     if file.filename == '':
+#         return jsonify({'error': 'No file selected'}), 400
+
+#     file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+#     file.save(file_path)
+    
+#     # If your describe_image function uses conversation history,
+#     # consider trimming it before calling the function.
+#     description = describe_image(file_path)
+#     return jsonify({'description': description})
+
+# @app.route('/upload_audio', methods=['POST'])
+# def upload_audio():
+#     if 'audio' not in request.files:
+#         return jsonify({'error': 'No audio file provided'}), 400
+#     file = request.files['audio']
+#     file_path = os.path.join(app.config['UPLOAD_FOLDER'], 'user_audio.wav')
+#     file.save(file_path)
+    
+#     transcribed_text = Speech_To_Text.transcribe_audio_file(file_path)
+    
+#     farm_type = request.form.get('farm_type', 'General Information')
+#     if farm_type != "General Information":
+#         farm_info = f"Information requested is for {farm_type}."
+#     else:
+#         farm_info = "Information requested is for general information."
+    
+#     # Initialize conversation history if not present.
+#     if 'messages' not in session:
+#         session['messages'] = []
+    
+#     # Append the audio transcription as a user message.
+#     session['messages'].append({'role': 'user', 'content': transcribed_text})
+#     session['messages'] = trim_messages(session['messages'])
+    
+#     query = f"{farm_info}\n{transcribed_text}"
+#     response = chat_with_bot(query)
+#     session['messages'].append({'role': 'assistant', 'content': response})
+    
+#     return jsonify({'transcribed_text': transcribed_text, 'response': response})
+
+# if __name__ == '__main__':
+#     app.run(debug=True)
+
+# import os
+# import sys
+# import json
+# import uuid
+# import subprocess
+# from flask import Flask, render_template, request, jsonify, session
+# from api.UIUCChat import chat_with_bot
+# from data.models import Speech_To_Text
+# from llm.openai_driver import describe_image
+
+# # Import the translation library from transformers
+# from transformers import MarianMTModel, MarianTokenizer
+
+# # Translation function from English to Spanish
+# def translate_english_to_spanish(text):
+#     model_name = 'Helsinki-NLP/opus-mt-en-es'
+#     tokenizer = MarianTokenizer.from_pretrained(model_name)
+#     model = MarianMTModel.from_pretrained(model_name)
+#     inputs = tokenizer(text, return_tensors='pt', padding=True)
+#     translated = model.generate(**inputs)
+#     translated_text = tokenizer.batch_decode(translated, skip_special_tokens=True)
+#     return translated_text[0]
+
+# # app = Flask(__name__, template_folder="templates")
+# # app.secret_key = "your_secret_key_here"
+# UPLOAD_FOLDER = "uploads"
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+# @app.route("/")
+# def index():
+#     return render_template("index.html")
+
+# @app.route("/chat", methods=["POST"])
+# def chat():
+#     user_input = request.form.get("user_input")
+#     farm_type = request.form.get("farm_type", "General Information")
+#     language = request.form.get("language", "en")  # "en" or "es"
+    
+#     if farm_type != "General Information":
+#         farm_info = f"Information requested is for {farm_type}."
+#     else:
+#         farm_info = "Information requested is for general information."
+    
+#     # Create the query for the chatbot.
+#     query = f"{farm_info}\n{user_input}"
+#     response = chat_with_bot(query)
+    
+#     # If Spanish is selected, translate the response.
+#     if language == "es":
+#         response = translate_english_to_spanish(response)
+    
+#     return jsonify({"response": response})
+
+# @app.route("/upload_audio", methods=["POST"])
+# def upload_audio():
+#     if "audio" not in request.files:
+#         return jsonify({"error": "No audio file provided"}), 400
+#     file = request.files["audio"]
+#     file_path = os.path.join(app.config["UPLOAD_FOLDER"], "user_audio.wav")
+#     file.save(file_path)
+    
+#     transcript = Speech_To_Text.transcribe_audio_file(file_path)
+#     farm_type = request.form.get("farm_type", "General Information")
+#     language = request.form.get("language", "en")
+    
+#     if farm_type != "General Information":
+#         farm_info = f"Information requested is for {farm_type}."
+#     else:
+#         farm_info = "Information requested is for general information."
+    
+#     query = f"{farm_info}\n{transcript}"
+#     response = chat_with_bot(query)
+    
+#     if language == "es":
+#         response = translate_english_to_spanish(response)
+    
+#     return jsonify({"transcribed_text": transcript, "response": response})
+
+# if __name__ == "__main__":
+#     app.run(debug=True)
+
