@@ -29,7 +29,7 @@ def chat_with_bot(user_input):
 
     try:
         # Send request
-        response = requests.post(url, headers=headers, json=data, timeout=30)
+        response = requests.post(url, headers=headers, json=data, timeout=50)
 
         # Log the raw response text for debugging
         print("Raw Response Text:", response.text)
