@@ -77,11 +77,9 @@ curl -X POST "http://localhost:5000/upload_audio" -F "audio=@path/to/your/audio.
 ```
 
 ## Contributors
-- **[Jyot Buch, Nidhi Baheti]** - Lead Developers
+- **Jyot Buch, Nidhi Baheti** - Lead Developers
 
 ## License
 This project is licensed under the MIT License. See `LICENSE` for details.
 
 ---
-For inquiries or contributions, contact us at [your email] or visit our GitHub repository.
-
